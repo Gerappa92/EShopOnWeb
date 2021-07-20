@@ -16,6 +16,7 @@ using Microsoft.eShopWeb.ApplicationCore.Interfaces;
 using Microsoft.eShopWeb.Infrastructure.Data;
 using Microsoft.eShopWeb.Infrastructure.Identity;
 using Microsoft.eShopWeb.Web.Configuration;
+using Microsoft.eShopWeb.Web.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -26,6 +27,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Mime;
+
 
 namespace Microsoft.eShopWeb.Web
 {
@@ -61,8 +63,12 @@ namespace Microsoft.eShopWeb.Web
         private void ConfigureInMemoryDatabases(IServiceCollection services)
         {
             // use in-memory database
+            //services.AddDbContext<CatalogContext>(c =>
+            //    c.UseInMemoryDatabase("Catalog"));
+
+            var cs = new KeyVaultService(Configuration).GetSecret("CatalogConnection");
             services.AddDbContext<CatalogContext>(c =>
-                c.UseInMemoryDatabase("Catalog"));
+                c.UseSqlServer(cs));
 
             // Add Identity DbContext
             services.AddDbContext<AppIdentityDbContext>(options =>
@@ -76,12 +82,17 @@ namespace Microsoft.eShopWeb.Web
             // use real database
             // Requires LocalDB which can be installed with SQL Server Express 2016
             // https://www.microsoft.com/en-us/download/details.aspx?id=54284
+
+            var cs = new KeyVaultService(Configuration).GetSecret("CatalogConnection");
             services.AddDbContext<CatalogContext>(c =>
-                c.UseSqlServer(Configuration.GetConnectionString("CatalogConnection")));
+                c.UseSqlServer(cs));
 
             // Add Identity DbContext
+            //services.AddDbContext<AppIdentityDbContext>(options =>
+            //    options.UseSqlServer(Configuration.GetConnectionString("IdentityConnection")));
+
             services.AddDbContext<AppIdentityDbContext>(options =>
-                options.UseSqlServer(Configuration.GetConnectionString("IdentityConnection")));
+                options.UseInMemoryDatabase("Identity"));
 
             ConfigureServices(services);
         }
@@ -96,7 +107,6 @@ namespace Microsoft.eShopWeb.Web
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddCookieSettings();
-
 
             services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(options =>
@@ -164,6 +174,7 @@ namespace Microsoft.eShopWeb.Web
             services.AddDatabaseDeveloperPageExceptionFilter();
 
             _services = services; // used to debug registered services
+            services.AddApplicationInsightsTelemetry(Configuration["APPINSIGHTS_CONNECTIONSTRING"]);
         }
 
 
@@ -231,6 +242,8 @@ namespace Microsoft.eShopWeb.Web
                 endpoints.MapFallbackToFile("index.html");
             });
         }
+
+
 
     }
 

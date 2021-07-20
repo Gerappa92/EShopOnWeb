@@ -9,10 +9,13 @@ using Microsoft.eShopWeb.ApplicationCore.Exceptions;
 using Microsoft.eShopWeb.ApplicationCore.Interfaces;
 using Microsoft.eShopWeb.Infrastructure.Identity;
 using Microsoft.eShopWeb.Web.Interfaces;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Flurl.Http;
+using Microsoft.eShopWeb.Web.Extensions;
 
 namespace Microsoft.eShopWeb.Web.Pages.Basket
 {
@@ -25,18 +28,21 @@ namespace Microsoft.eShopWeb.Web.Pages.Basket
         private string _username = null;
         private readonly IBasketViewModelService _basketViewModelService;
         private readonly IAppLogger<CheckoutModel> _logger;
+        private readonly IKeyVaultService _keyVaultService;
 
         public CheckoutModel(IBasketService basketService,
             IBasketViewModelService basketViewModelService,
             SignInManager<ApplicationUser> signInManager,
             IOrderService orderService,
-            IAppLogger<CheckoutModel> logger)
+            IAppLogger<CheckoutModel> logger, 
+            IKeyVaultService keyVaultService)
         {
             _basketService = basketService;
             _signInManager = signInManager;
             _orderService = orderService;
             _basketViewModelService = basketViewModelService;
             _logger = logger;
+            _keyVaultService = keyVaultService;
         }
 
         public BasketViewModel BasketModel { get; set; } = new BasketViewModel();
@@ -57,10 +63,28 @@ namespace Microsoft.eShopWeb.Web.Pages.Basket
                     return BadRequest();
                 }
 
-                var updateModel = items.ToDictionary(b => b.Id.ToString(), b => b.Quantity);
+                var updateModel = items.ToDictionary(b => b.Id.ToString(), b => b.Quantity);              
+
+
                 await _basketService.SetQuantities(BasketModel.Id, updateModel);
                 await _orderService.CreateOrderAsync(BasketModel.Id, new Address("123 Main St.", "Kent", "OH", "United States", "44240"));
-                await _basketService.DeleteBasketAsync(BasketModel.Id);               
+                var orderTemplate = await _orderService.GetOrderTemplate(BasketModel.Id, new Address("123 Main St.", "Kent", "OH", "United States", "44240"));
+                await _basketService.DeleteBasketAsync(BasketModel.Id);
+
+                try
+                {
+                    await _keyVaultService.GetSecret("FunctionAddOrdersJson").PostJsonAsync(new { Guid = Guid.NewGuid(), order = items.Select(j => new { j.Id, j.Quantity }) });
+                    await _keyVaultService.GetSecret("FunctionAddOrdersToCosmoDB").PostJsonAsync(new
+                    {
+                        ShippingAddress = orderTemplate.ShipToAddress,
+                        Items = orderTemplate.OrderItems,
+                        FinalPrice = orderTemplate.Total()
+                    });
+                }
+                catch (Exception)
+                {
+                    _logger.LogWarning("The orders were not added to the blob");
+                }
             }
             catch (EmptyBasketOnCheckoutException emptyBasketOnCheckoutException)
             {

@@ -50,5 +50,27 @@ namespace Microsoft.eShopWeb.ApplicationCore.Services
 
             await _orderRepository.AddAsync(order);
         }
+
+        public async Task<Order> GetOrderTemplate(int basketId, Address shippingAddress)
+        {
+            var basketSpec = new BasketWithItemsSpecification(basketId);
+            var basket = await _basketRepository.FirstOrDefaultAsync(basketSpec);
+
+            Guard.Against.NullBasket(basketId, basket);
+            Guard.Against.EmptyBasketOnCheckout(basket.Items);
+
+            var catalogItemsSpecification = new CatalogItemsSpecification(basket.Items.Select(item => item.CatalogItemId).ToArray());
+            var catalogItems = await _itemRepository.ListAsync(catalogItemsSpecification);
+
+            var items = basket.Items.Select(basketItem =>
+            {
+                var catalogItem = catalogItems.First(c => c.Id == basketItem.CatalogItemId);
+                var itemOrdered = new CatalogItemOrdered(catalogItem.Id, catalogItem.Name, _uriComposer.ComposePicUri(catalogItem.PictureUri));
+                var orderItem = new OrderItem(itemOrdered, basketItem.UnitPrice, basketItem.Quantity);
+                return orderItem;
+            }).ToList();
+
+            return new Order(basket.BuyerId, shippingAddress, items);
+        }
     }
 }
