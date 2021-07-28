@@ -1,15 +1,12 @@
-﻿using System;
+﻿using Azure.Core;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
-using Azure.Core;
+using Microsoft.eShopWeb.ApplicationCore.Interfaces;
 using Microsoft.Extensions.Configuration;
+using System;
 
-namespace Microsoft.eShopWeb.Web.Extensions
+namespace Microsoft.eShopWeb.Infrastructure.Services
 {
-    public interface IKeyVaultService
-    {
-        public string GetSecret(string secretName);
-    }
 
     public class KeyVaultService : IKeyVaultService
     {

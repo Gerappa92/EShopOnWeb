@@ -68,23 +68,7 @@ namespace Microsoft.eShopWeb.Web.Pages.Basket
 
                 await _basketService.SetQuantities(BasketModel.Id, updateModel);
                 await _orderService.CreateOrderAsync(BasketModel.Id, new Address("123 Main St.", "Kent", "OH", "United States", "44240"));
-                var orderTemplate = await _orderService.GetOrderTemplate(BasketModel.Id, new Address("123 Main St.", "Kent", "OH", "United States", "44240"));
                 await _basketService.DeleteBasketAsync(BasketModel.Id);
-
-                try
-                {
-                    await _keyVaultService.GetSecret("FunctionAddOrdersJson").PostJsonAsync(new { Guid = Guid.NewGuid(), order = items.Select(j => new { j.Id, j.Quantity }) });
-                    await _keyVaultService.GetSecret("FunctionAddOrdersToCosmoDB").PostJsonAsync(new
-                    {
-                        ShippingAddress = orderTemplate.ShipToAddress,
-                        Items = orderTemplate.OrderItems,
-                        FinalPrice = orderTemplate.Total()
-                    });
-                }
-                catch (Exception)
-                {
-                    _logger.LogWarning("The orders were not added to the blob");
-                }
             }
             catch (EmptyBasketOnCheckoutException emptyBasketOnCheckoutException)
             {

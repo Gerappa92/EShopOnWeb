@@ -15,8 +15,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.eShopWeb.ApplicationCore.Interfaces;
 using Microsoft.eShopWeb.Infrastructure.Data;
 using Microsoft.eShopWeb.Infrastructure.Identity;
+using Microsoft.eShopWeb.Infrastructure.Services;
 using Microsoft.eShopWeb.Web.Configuration;
-using Microsoft.eShopWeb.Web.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -175,6 +175,8 @@ namespace Microsoft.eShopWeb.Web
 
             _services = services; // used to debug registered services
             services.AddApplicationInsightsTelemetry(Configuration["APPINSIGHTS_CONNECTIONSTRING"]);
+
+            //services.AddHostedService<ServiceBusReceiverHostedService>();
         }
 
 

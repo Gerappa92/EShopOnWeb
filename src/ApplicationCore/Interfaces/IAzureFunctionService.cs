@@ -3,8 +3,8 @@ using System.Threading.Tasks;
 
 namespace Microsoft.eShopWeb.ApplicationCore.Interfaces
 {
-    public interface IOrderService
+    public interface IAzureFunctionService
     {
-        Task CreateOrderAsync(int basketId, Address shippingAddress);
+        public Task AddOrdersToCosmosDB(Order order);
     }
 }
